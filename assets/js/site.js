@@ -135,16 +135,23 @@
       });
     }
 
-    if (!hasIO) return;
+    // The section in view is the last one whose top has passed the middle of the screen. Checked on every
+    // scroll frame rather than with an observer, so an instant jump (Back to top, the Home key) can't leave it stale.
     const sections = ["work", "research", "projects", "toolkit", "about", "contact"].map((id) => document.getElementById(id)).filter(Boolean);
-    const inBand = new Set();
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => { if (entry.isIntersecting) inBand.add(entry.target); else inBand.delete(entry.target); });
-      const hit = sections.find((s) => inBand.has(s));
-      if (hit) setCurrent(byId.get(hit.id) || null);
-      else if (sections[0] && sections[0].getBoundingClientRect().top > window.innerHeight * 0.5) setCurrent(null);
-    }, { rootMargin: "-45% 0px -50% 0px" });
-    sections.forEach((s) => io.observe(s));
+    let sraf = 0;
+    const pick = () => {
+      sraf = 0;
+      const line = window.innerHeight * 0.47;
+      let hit = null;
+      for (const s of sections) {
+        if (s.getBoundingClientRect().top <= line) hit = s;
+        else break;
+      }
+      setCurrent(hit ? byId.get(hit.id) || null : null);
+    };
+    window.addEventListener("scroll", () => { if (!sraf) sraf = requestAnimationFrame(pick); }, { passive: true });
+    window.addEventListener("resize", pick);
+    pick();
   }
 
   /* ---------- Reveal on scroll ---------- */
